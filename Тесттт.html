@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн Тестілеу Жүйесі</title>
+    <!-- Certificatte-ты жүктеуге арналған html2canvas кітапханасы -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at center, #1a2332 0%, #0d1117 100%);
+            color: #2d3748;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Үстіңгі таймер & Басқару панели */
+        .top-bar {
+            background: #f8fafc;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .timer {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #e53e3e;
+            background: #fff5f5;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #fed7d7;
+        }
+
+        .user-info-bar {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        /* Негізгі тор (3 баған) */
+        .quiz-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            min-height: 550px;
+        }
+
+        @media (max-width: 900px) {
+            .quiz-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Бүйірлік панельдер */
+        .sidebar {
+            background: #f8fafc;
+            padding: 20px;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .sidebar.right {
+            border-right: none;
+            border-left: 1px solid #e2e8f0;
+        }
+
+        .sidebar-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #718096;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .top-card, .leaderboard-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #edf2f7;
+        }
+
+        /* Негізгі сұрақ контенті */
+        .main-content {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Бастапқы кіру формасы */
+        .start-screen {
+            text-align: center;
+            padding: 40px;
+            max-width: 400px;
+            margin: auto;
+        }
+
+        .start-screen input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .btn {
+            background: #3182ce;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #2b6cb0;
+        }
+
+        .btn-danger {
+            background: #e53e3e;
+        }
+        .btn-danger:hover {
+            background: #c53030;
+        }
+
+        /* Сұрақ карточкасы */
+        .question-number {
+            font-size: 0.9rem;
+            color: #a0aec0;
+            font-weight: 600;
+        }
+
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 15px 0 25px 0;
+            color: #1a202c;
+        }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background: #f7fafc;
+            border: 2px solid #edf2f7;
+            padding: 14px 20px;
+            border-radius: 10px;
+            text-align: left;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #4a5568;
+        }
+
+        .option-btn:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        /* Түстер: Дұрыс/Қате/Тандалған */
+        .option-btn.selected {
+            border-color: #3182ce;
+            background: #ebf8ff;
+        }
+
+        .option-btn.correct {
+            background: #c6f6d5 !important;
+            border-color: #38a169 !important;
+            color: #22543d !important;
+        }
+
+        .option-btn.wrong {
+            background: #fed7d7 !important;
+            border-color: #e53e3e !important;
+            color: #742a2a !important;
+        }
+
+        /* Сұрақтар аралау навигациясы */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+
+        .question-jumper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .jump-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e0;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .jump-btn.active {
+            border-color: #3182ce;
+            background: #3182ce;
+            color: white;
+        }
+
+        .jump-btn.answered {
+            background: #e2e8f0;
+        }
+
+        /* НӘТИЖЕ КАРТОЧКАСЫ (Талап #1) */
+        .result-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 600px;
+            margin: auto;
+            width: 100%;
+        }
+
+        .result-user-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+
+        .score-big {
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #38a169;
+            line-height: 1;
+        }
+
+        .score-percent {
+            font-size: 1.2rem;
+            color: #38a169;
+            font-weight: 600;
+            margin-bottom: 25px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .stat-box {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .stat-box span {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-top: 5px;
+        }
+
+        .test-ended-text {
+            color: #e53e3e;
+            font-weight: 800;
+            font-size: 1.3rem;
+            letter-spacing: 1px;
+            margin-top: 15px;
+        }
+
+        /* СЕРТИФИКАТ (Талап #11, #12) */
+        .certificate-container {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .certificate {
+            width: 100%;
+            max-width: 700px;
+            background: #fff;
+            border: 10px solid #2b6cb0;
+            padding: 40px;
+            margin: 0 auto;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .certificate-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #2b6cb0;
+            text-transform: uppercase;
+        }
+
+        .certificate-body {
+            margin: 30px 0;
+            font-size: 1.1rem;
+        }
+
+        .certificate-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3748;
+            border-bottom: 2px solid #2b6cb0;
+            display: inline-block;
+            padding: 0 20px;
+            margin: 15px 0;
+        }
+
+        /* Қатемен жұмыс секциясы */
+        .review-section {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .review-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #cbd5e0;
+        }
+
+        .review-item.is-correct { border-left-color: #38a169; }
+        .review-item.is-wrong { border-left-color: #e53e3e; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Үстіңгі Панель -->
+    <div class="top-bar">
+        <div class="user-info-bar" id="userInfoDisplay">Онлайн Тестілеу</div>
+        <div class="timer" id="timer">10:00</div>
+    </div>
+
+    <!-- Негізгі Контент Торлары -->
+    <div class="quiz-layout">
+        
+        <!-- Сол баған: Үздік Нәтиже (Талап #4) -->
+        <div class="sidebar">
+            <div class="sidebar-title">Үздік нәтиже 🏆</div>
+            <div id="bestScoreCard" class="top-card">
+                <small>Дерек жоқ</small>
+            </div>
+
+            <div class="sidebar-title" style="margin-top: 30px;">Сұрақтар</div>
+            <div class="question-jumper" id="questionJumper"></div>
+        </div>
+
+        <!-- Ортаңғы баған: Тест сұрақтары немесе Нәтиже -->
+        <div class="main-content" id="mainContent">
+            
+            <!-- Бастапқы Экран -->
+            <div id="startScreen" class="start-screen">
+                <h2>Тестке кош келдіңіз!</h2>
+                <p style="color: #718096; margin-top: 5px;">Аты-жөніңізді енгізіп, бастаңыз</p>
+                <input type="text" id="userNameInput" placeholder="Бухар Даурен" autofocus>
+                <button class="btn" onclick="startQuiz()">Тестті бастау</button>
+            </div>
+
+            <!-- Сұрақ Тегі (Әдепкіде жасырулы) -->
+            <div id="quizScreen" style="display: none;">
+                <div>
+                    <div class="question-number" id="qNumber">Сұрақ 1/10</div>
+                    <div class="question-text" id="qText">Сұрақ мәтіні осы жерде болады</div>
+                    <div class="options-grid" id="optionsGrid"></div>
+                </div>
+
+                <div class="nav-buttons">
+                    <button class="btn" onclick="prevQuestion()" id="prevBtn">Артқа</button>
+                    <button class="btn" onclick="nextQuestion()" id="nextBtn">Алға</button>
+                    <button class="btn btn-danger" onclick="finishQuiz()" id="finishBtn" style="display:none;">Аяқтау</button>
+                </div>
+            </div>
+
+            <!-- Нәтиже Экраны (Талап #1) -->
+            <div id="resultScreen" style="display: none;">
+                <div class="result-card">
+                    <div class="result-user-name" id="resUserName">Бухар Даурен</div>
+                    
+                    <div class="score-big" id="resScore">6</div>
+                    <div class="score-percent" id="resPercent">/ 30%</div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            Тест балы
+                            <span id="statBaseScore">6</span>
+                        </div>
+                        <div class="stat-box">
+                            Ереже бұзушылық
+                            <span id="statViolations" style="color: #e53e3e;">0</span>
+                        </div>
+                        <div class="stat-box">
+                            Шегерілген балл
+                            <span id="statDeducted" style="color: #e53e3e;">-0</span>
+                        </div>
+                    </div>
+
+                    <div class="test-ended-text">ТЕСТ АЯҚТАЛДЫ!</div>
+
+                    <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: center;">
+                        <button class="btn" onclick="toggleReview()">Қатемен жұмыс</button>
+                        <button class="btn" style="background:#2b6cb0" onclick="downloadCertificate()">Сертификат жүктеу</button>
+                    </div>
+                </div>
+
+                <!-- Сертификат Аймағы -->
+                <div class="certificate-container" id="certArea">
+                    <div class="certificate" id="certificate">
+                        <div class="certificate-title">Сертификат</div>
+                        <p style="margin-top: 10px; color: #718096;">Осы сертификат табысталады:</p>
+                        <div class="certificate-name" id="certName">Бухар Даурен</div>
+                        <div class="certificate-body">
+                            Онлайн тестілеу жүйесінен сәтті өтіп, <br>
+                            <strong><span id="certScore">0</span> балл (<span id="certPercent">0%</span>)</strong> жинағаны үшін.
+                        </div>
+                        <small style="color: #a0aec0;">Күні: <span id="certDate"></span></small>
+                    </div>
+                </div>
+
+                <!-- Қатемен жұмыс секциясы (Талап #7) -->
+                <div id="reviewSection" class="review-section" style="display: none;"></div>
+            </div>
+
+        </div>
+
+        <!-- Оң баған: Үздік бес нәтиже (Талап #4) -->
+        <div class="sidebar right">
+            <div class="sidebar-title">Үздік 5 Нәтиже 🌟</div>
+            <div id="top5List">
+                <!-- JS арқылы толтырылады -->
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // 1. ДЕРЕКТЕР МЕН СҰРАҚТАР БАЗАСЫ
+    const questions = [
+        { id: 1, text: "HTML дегеніміз не?", options: ["HyperText Markup Language", "HighText Machine Language", "Hyper Transfer Markup Mode"], correct: 0 },
+        { id: 2, text: "CSS не үшін қолданылады?", options: ["Деректер базасын басқару", "Веб-бетті сәндеу (дизайн)", "Серверлік логика жазу"], correct: 1 },
+        { id: 3, text: "JavaScript-те айнымалыны жариялау кілт сөзі:", options: ["var / let / const", "make / create", "integer / string"], correct: 0 },
+        { id: 4, text: "DOM дегеніміз не?", options: ["Document Object Model", "Data Object Mode", "Digital Ordinance Model"], correct: 0 },
+        { id: 5, text: "Жиымның (Array) соңына элемент қосатын әдіс:", options: ["pop()", "push()", "shift()"], correct: 1 },
+        { id: 6, text: "Тегтер қай тілге тиесілі?", options: ["CSS", "HTML", "JSON"], correct: 1 },
+        { id: 7, text: "Оқиғаларды тыңдау әдісін көрсетіңіз:", options: ["addEventListener", "attachEventOnly", "listenToEvent"], correct: 0 },
+        { id: 8, text: "Асинхронды код жазу үшін қолданылады:", options: ["Promise / Async-Await", "For Loop", "If-Else"], correct: 0 },
+        { id: 9, text: "CSS-те элементті ортаға келтірудің заманауи тәсілі:", options: ["display: flex; justify-content: center;", "float: left;", "position: absolute;"], correct: 0 },
+        { id: 10, text: "Логикалық 'ЖӘНЕ' операторы:", options: ["||", "&&", "!"], correct: 1 }
+    ];
+
+    // Күйді сақтау (State)
+    let state = {
+        userName: "",
+        currentIndex: 0,
+        userAnswers: {},
+        violations: 0,
+        timeLeft: 600, // 10 минут уақыт
+        isFinished: false,
+        startTime: null
+    };
+
+    let timerInterval = null;
+
+    // 2. БЕТТІ ЖҮКТЕУ ЖӘНЕ СОСТАТИКАЛЫҚ ҚАЛПЫНА КЕЛТІРУ (Талап #8)
+    window.addEventListener('DOMContentLoaded', () => {
+        loadLocalStorageData();
+        renderLeaderboards();
+
+        // Бетті жаңартқанда бұрынғы сессияны қалпына келтіру
+        const savedState = localStorage.getItem('quiz_current_state');
+        if (savedState) {
+            state = JSON.parse(savedState);
+            if (!state.isFinished) {
+                document.getElementById('startScreen').style.display = 'none';
+                document.getElementById('quizScreen').style.display = 'block';
+                document.getElementById('userInfoDisplay').innerText = `Пайдаланушы: ${state.userName}`;
+                startTimer();
+                renderQuestion();
+                renderJumper();
+            } else {
+                showResults();
+            }
+        }
+    });
+
+    function saveState() {
+        localStorage.setItem('quiz_current_state', JSON.stringify(state));
+    }
+
+    // 3. ТЕСТТІ БАСТАУ
+    function startQuiz() {
+        const nameInput = document.getElementById('userNameInput').value.trim();
+        if (!nameInput) {
+            alert("Өтініш, аты-жөніңізді енгізіңіз!");
+            return;
+        }
+
+        state.userName = nameInput;
+        state.startTime = new Date().toISOString();
+        document.getElementById('userInfoDisplay').innerText = `Пайдаланушы: ${state.userName}`;
+        
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('quizScreen').style.display = 'block';
+
+        startTimer();
+        renderQuestion();
+        renderJumper();
+        saveState();
+    }
+
+    // 4. ТАЙМЕР БАСҚАРУ (Талап #5)
+    function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            state.timeLeft--;
+            saveState();
+
+            let min = Math.floor(state.timeLeft / 60);
+            let sec = state.timeLeft % 60;
+            document.getElementById('timer').innerText = 
+                `${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
+
+            if (state.timeLeft <= 0) {
+                clearInterval(timerInterval);
+                finishQuiz();
+            }
+        }, 1000);
+    }
+
+    // 5. ЕРЕЖЕ БҰЗУШЫЛЫҚТЫ АНЫҚТАУ (Талап #2)
+    document.addEventListener('visibilitychange', () => {
+        if (!state.isFinished && state.userName && document.hidden) {
+            state.violations++;
+            alert(`Ереже бұзылды! Басқа терезеге өтуге болмайды. Ереже бұзушылық саны: ${state.violations}`);
+            saveState();
+        }
+    });
+
+    // 6. СҰРАҚТЫ СЫЗУ ЖӘНЕ НАВИГАЦИЯ (Талап #6, #10)
+    function renderQuestion() {
+        const q = questions[state.currentIndex];
+        document.getElementById('qNumber').innerText = `Сұрақ ${state.currentIndex + 1}/${questions.length}`;
+        document.getElementById('qText').innerText = q.text;
+
+        const grid = document.getElementById('optionsGrid');
+        grid.innerHTML = '';
+
+        q.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+
+            // Егер жауап берілген болса белгілеу
+            if (state.userAnswers[state.currentIndex] === idx) {
+                btn.classList.add('selected');
+            }
+
+            btn.onclick = () => selectOption(idx);
+            grid.appendChild(btn);
+        });
+
+        // Түймелердің күйі
+        document.getElementById('prevBtn').style.visibility = state.currentIndex === 0 ? 'hidden' : 'visible';
+        
+        if (state.currentIndex === questions.length - 1) {
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('finishBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('nextBtn').style.display = 'inline-block';
+            document.getElementById('finishBtn').style.display = 'none';
+        }
+
+        renderJumper();
+    }
+
+    function selectOption(index) {
+        state.userAnswers[state.currentIndex] = index;
+        saveState();
+        renderQuestion();
+    }
+
+    function nextQuestion() {
+        if (state.currentIndex < questions.length - 1) {
+            state.currentIndex++;
+            saveState();
+            renderQuestion();
+        }
+    }
+
+    function prevQuestion() {
+        if (state.currentIndex > 0) {
+            state.currentIndex--;
+            saveState();
+            renderQuestion();
+        }
+    }
+
+    function jumpToQuestion(idx) {
+        state.currentIndex = idx;
+        saveState();
+        renderQuestion();
+    }
+
+    function renderJumper() {
+        const container = document.getElementById('questionJumper');
+        container.innerHTML = '';
+        questions.forEach((_, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `jump-btn ${state.currentIndex === idx ? 'active' : ''} ${state.userAnswers[idx] !== undefined ? 'answered' : ''}`;
+            btn.innerText = idx + 1;
+            btn.onclick = () => jumpToQuestion(idx);
+            container.appendChild(btn);
+        });
+    }
+
+    // 7. ТЕСТТІ АЯҚТАУ ЖӘНЕ НӘТИЖЕНІ ЕСЕПТЕУ (Талап #1, #2)
+    function finishQuiz() {
+        clearInterval(timerInterval);
+        state.isFinished = true;
+
+        // Дұрыс жауаптарды есептеу
+        let rawScore = 0;
+        questions.forEach((q, idx) => {
+            if (state.userAnswers[idx] === q.correct) {
+                rawScore++;
+            }
+        });
+
+        // Ереже бұзушылық айыппұлы (Әр бұзушылық үшін -1 балл)
+        let deduction = state.violations * 1; 
+        let finalScore = Math.max(0, rawScore - deduction);
+        let percent = Math.round((finalScore / questions.length) * 100);
+
+        state.finalResults = {
+            rawScore: rawScore,
+            deduction: deduction,
+            finalScore: finalScore,
+            percent: percent
+        };
+
+        saveState();
+        saveLeaderboardData(state.userName, finalScore, percent);
+        showResults();
+    }
+
+    function showResults() {
+        document.getElementById('quizScreen').style.display = 'none';
+        document.getElementById('resultScreen').style.display = 'block';
+
+        const res = state.finalResults;
+
+        document.getElementById('resUserName').innerText = state.userName;
+        document.getElementById('resScore').innerText = `${res.finalScore} / ${questions.length}`;
+        document.getElementById('resPercent').innerText = `${res.percent}%`;
+        
+        document.getElementById('statBaseScore').innerText = res.rawScore;
+        document.getElementById('statViolations').innerText = state.violations;
+        document.getElementById('statDeducted').innerText = `-${res.deduction}`;
+
+        // Сертификат деректерін дайындау
+        document.getElementById('certName').innerText = state.userName;
+        document.getElementById('certScore').innerText = res.finalScore;
+        document.getElementById('certPercent').innerText = `${res.percent}%`;
+        document.getElementById('certDate').innerText = new Date().toLocaleDateString('kk-KZ');
+
+        renderReview();
+        renderLeaderboards();
+    }
+
+    // 8. ҚАТЕМЕН ЖҰМЫС (Талап #7, #10)
+    function renderReview() {
+        const container = document.getElementById('reviewSection');
+        container.innerHTML = '<h3>Қатемен жұмыс:</h3><br>';
+
+        questions.forEach((q, idx) => {
+            const userAns = state.userAnswers[idx];
+            const isCorrect = userAns === q.correct;
+
+            const div = document.createElement('div');
+            div.className = `review-item ${isCorrect ? 'is-correct' : 'is-wrong'}`;
+            
+            let userAnsText = userAns !== undefined ? q.options[userAns] : "Жауап берілмеді";
+            let correctAnsText = q.options[q.correct];
+
+            div.innerHTML = `
+                <strong>${idx + 1}. ${q.text}</strong><br>
+                <small style="color:${isCorrect ? 'green' : 'red'}">Сіздің жауап: ${userAnsText}</small><br>
+                ${!isCorrect ? `<small style="color:green">Дұрыс жауап: ${correctAnsText}</small>` : ''}
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function toggleReview() {
+        const rev = document.getElementById('reviewSection');
+        rev.style.display = rev.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // 9. СЕРТИФИКАТТЫ ЖҮКТЕУ (Талап #11, #12)
+    function downloadCertificate() {
+        const certArea = document.getElementById('certArea');
+        certArea.style.display = 'block';
+
+        html2canvas(document.getElementById('certificate')).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `${state.userName}_certificate.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            certArea.style.display = 'none';
+        });
+    }
+
+    // 10. ТҮЗУШІЛЕР КЕСТЕСІ (LEADERBOARD) БАСҚАРУ (Талап #4)
+    function saveLeaderboardData(name, score, percent) {
+        let history = JSON.parse(localStorage.getItem('quiz_leaderboard') || '[]');
+        history.push({ name, score, percent, date: new Date().getTime() });
+        localStorage.setItem('quiz_leaderboard', JSON.stringify(history));
+    }
+
+    function renderLeaderboards() {
+        let history = JSON.parse(localStorage.getItem('quiz_leaderboard') || '[]');
+
+        if (history.length === 0) return;
+
+        // Өсу ретімен сұрыптау
+        history.sort((a, b) => b.score - a.score);
+
+        // Сол жақ: Үздік нәтиже 1-орын
+        const best = history[0];
+        document.getElementById('bestScoreCard').innerHTML = `
+            <strong>${best.name}</strong><br>
+            <span style="color:#38a169; font-weight:bold;">${best.score} балл (${best.percent}%)</span>
+        `;
+
+        // Оң жақ: Үздік 5 нәтиже
+        const top5 = history.slice(0, 5);
+        const top5Container = document.getElementById('top5List');
+        top5Container.innerHTML = '';
+
+        top5.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'leaderboard-item';
+            div.innerHTML = `
+                <small>#${index + 1}</small> <strong>${item.name}</strong><br>
+                <small style="color:#38a169;">Нәтиже: ${item.score} б / ${item.percent}%</small>
+            `;
+            top5Container.appendChild(div);
+        });
+    }
+</script>
+</body>
+</html>
